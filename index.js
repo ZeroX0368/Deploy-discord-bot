@@ -47,6 +47,13 @@ function stripIndent(str) {
 // Bot stats function
 const botstats = require('./shared/botstats');
 
+// Import shared modules for info command
+const user = require('./shared/user');
+const channelInfo = require('./shared/channel');
+const guildInfo = require('./shared/guild');
+const avatar = require('./shared/avatar');
+const emojiInfo = require('./shared/emoji');
+
 // Slash commands
 const commands = [
   {
@@ -73,6 +80,74 @@ const commands = [
   {
     name: 'dog',
     description: 'Get a random dog image',
+  },
+  {
+    name: 'info',
+    description: 'Show various information',
+    options: [
+      {
+        name: 'user',
+        description: 'Get user information',
+        type: ApplicationCommandOptionType.Subcommand,
+        options: [
+          {
+            name: 'name',
+            description: 'Name of the user',
+            type: ApplicationCommandOptionType.User,
+            required: false,
+          },
+        ],
+      },
+      {
+        name: 'channel',
+        description: 'Get channel information',
+        type: ApplicationCommandOptionType.Subcommand,
+        options: [
+          {
+            name: 'name',
+            description: 'Name of the channel',
+            type: ApplicationCommandOptionType.Channel,
+            required: false,
+          },
+        ],
+      },
+      {
+        name: 'guild',
+        description: 'Get guild information',
+        type: ApplicationCommandOptionType.Subcommand,
+      },
+      {
+        name: 'bot',
+        description: 'Get bot information',
+        type: ApplicationCommandOptionType.Subcommand,
+      },
+      {
+        name: 'avatar',
+        description: 'Display avatar information',
+        type: ApplicationCommandOptionType.Subcommand,
+        options: [
+          {
+            name: 'name',
+            description: 'Name of the user',
+            type: ApplicationCommandOptionType.User,
+            required: false,
+          },
+        ],
+      },
+      {
+        name: 'emoji',
+        description: 'Display emoji information',
+        type: ApplicationCommandOptionType.Subcommand,
+        options: [
+          {
+            name: 'name',
+            description: 'Name of the emoji',
+            type: ApplicationCommandOptionType.String,
+            required: true,
+          },
+        ],
+      },
+    ],
   }
 ];
 
@@ -167,6 +242,60 @@ client.on('interactionCreate', async (interaction) => {
     } catch (error) {
       console.error('Error fetching dog image:', error);
       await interaction.reply({ content: 'Sorry, I could not fetch a dog image right now!', ephemeral: true });
+    }
+  }
+  
+  if (commandName === 'info') {
+    const sub = interaction.options.getSubcommand();
+    if (!sub) return interaction.reply({ content: 'Not a valid subcommand', ephemeral: true });
+    
+    let response;
+
+    try {
+      // user
+      if (sub === 'user') {
+        let targetUser = interaction.options.getUser('name') || interaction.user;
+        let target = await interaction.guild.members.fetch(targetUser);
+        response = user(target);
+      }
+
+      // channel
+      else if (sub === 'channel') {
+        let targetChannel = interaction.options.getChannel('name') || interaction.channel;
+        response = channelInfo(targetChannel);
+      }
+
+      // guild
+      else if (sub === 'guild') {
+        response = await guildInfo(interaction.guild);
+      }
+
+      // bot
+      else if (sub === 'bot') {
+        response = botstats(interaction.client);
+      }
+
+      // avatar
+      else if (sub === 'avatar') {
+        let target = interaction.options.getUser('name') || interaction.user;
+        response = avatar(target);
+      }
+
+      // emoji
+      else if (sub === 'emoji') {
+        let emoji = interaction.options.getString('name');
+        response = emojiInfo(emoji);
+      }
+
+      // return
+      else {
+        response = { content: 'Incorrect subcommand', ephemeral: true };
+      }
+
+      await interaction.reply(response);
+    } catch (error) {
+      console.error('Error in info command:', error);
+      await interaction.reply({ content: 'An error occurred while processing your request.', ephemeral: true });
     }
   }
 });
